@@ -1,17 +1,21 @@
 import { useEffect, useState } from 'react'
-
-const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+import { API_URL } from '../lib/api'
 
 export default function TransactionsList() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   const load = async () => {
     setLoading(true)
+    setError('')
     try {
       const res = await fetch(`${API_URL}/api/transactions`)
+      if (!res.ok) throw new Error(`Failed to load (${res.status})`)
       const data = await res.json()
       setItems(data)
+    } catch (e) {
+      setError(e.message)
     } finally {
       setLoading(false)
     }
@@ -27,6 +31,8 @@ export default function TransactionsList() {
       </div>
       {loading ? (
         <p className="text-slate-500">Loading...</p>
+      ) : error ? (
+        <p className="text-red-600 text-sm">{error}</p>
       ) : (
         <div className="divide-y divide-slate-200">
           {items.map((t) => (

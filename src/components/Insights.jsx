@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react'
-
-const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+import { API_URL } from '../lib/api'
 
 export default function Insights() {
   const [data, setData] = useState(null)
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0,7))
+  const [error, setError] = useState('')
 
   const load = async () => {
-    const res = await fetch(`${API_URL}/api/insights?month=${month}`)
-    const json = await res.json()
-    setData(json)
+    setError('')
+    try {
+      const res = await fetch(`${API_URL}/api/insights?month=${month}`)
+      if (!res.ok) throw new Error(`Failed to load insights (${res.status})`)
+      const json = await res.json()
+      setData(json)
+    } catch (e) {
+      setError(e.message)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -24,6 +30,8 @@ export default function Insights() {
             <button onClick={load} className="px-3 py-1 rounded-lg bg-slate-900 text-white">Update</button>
           </div>
         </div>
+
+        {error && <p className="text-red-600 text-sm">{error}</p>}
 
         {!data ? (
           <p className="text-slate-500">Loading...</p>

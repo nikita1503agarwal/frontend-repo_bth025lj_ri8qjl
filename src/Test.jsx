@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
+import { API_URL } from './lib/api'
 
 function Test() {
   const [backendStatus, setBackendStatus] = useState('checking...')
   const [backendUrl, setBackendUrl] = useState('')
   const [databaseStatus, setDatabaseStatus] = useState(null)
+  const [seeding, setSeeding] = useState(false)
+  const [seedMsg, setSeedMsg] = useState('')
 
   useEffect(() => {
     checkBackendConnection()
@@ -11,24 +14,12 @@ function Test() {
 
   const checkBackendConnection = async () => {
     try {
-      // Get backend URL from environment variable
-      const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
-      setBackendUrl(baseUrl)
-
-      // Test basic backend connectivity
-      const response = await fetch(`${baseUrl}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
+      setBackendUrl(API_URL)
+      const response = await fetch(`${API_URL}`, { method: 'GET' })
       if (response.ok) {
         const data = await response.json()
         setBackendStatus(`✅ Connected - ${data.message || 'OK'}`)
-        
-        // Now test database connectivity
-        await checkDatabaseConnection(baseUrl)
+        await checkDatabaseConnection()
       } else {
         setBackendStatus(`❌ Failed - ${response.status} ${response.statusText}`)
         setDatabaseStatus({ error: 'Backend not accessible' })
@@ -39,15 +30,9 @@ function Test() {
     }
   }
 
-  const checkDatabaseConnection = async (baseUrl) => {
+  const checkDatabaseConnection = async () => {
     try {
-      const response = await fetch(`${baseUrl}/test`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
+      const response = await fetch(`${API_URL}/test`)
       if (response.ok) {
         const dbData = await response.json()
         setDatabaseStatus(dbData)
@@ -56,6 +41,41 @@ function Test() {
       }
     } catch (error) {
       setDatabaseStatus({ error: `Database check failed - ${error.message}` })
+    }
+  }
+
+  const seedSampleData = async () => {
+    setSeeding(true)
+    setSeedMsg('')
+    try {
+      // create a couple of rules
+      const rules = [
+        { keyword: 'starbucks', category: 'Dining' },
+        { keyword: 'uber', category: 'Transport' },
+        { keyword: 'amazon', category: 'Shopping' },
+      ]
+      for (const r of rules) {
+        await fetch(`${API_URL}/api/rules`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(r)
+        })
+      }
+      // create budgets for this month
+      const month = new Date().toISOString().slice(0,7)
+      const budgets = [
+        { category: 'Dining', month, limit: 200 },
+        { category: 'Transport', month, limit: 150 },
+        { category: 'Shopping', month, limit: 300 },
+      ]
+      for (const b of budgets) {
+        await fetch(`${API_URL}/api/budgets`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b)
+        })
+      }
+      setSeedMsg('✅ Seeded rules and budgets. Try adding a transaction like "Starbucks" or "Uber" and refresh insights.')
+    } catch (e) {
+      setSeedMsg(`❌ Seeding failed: ${e.message}`)
+    } finally {
+      setSeeding(false)
     }
   }
 
@@ -111,6 +131,15 @@ function Test() {
           >
             Test Again
           </button>
+
+          <button
+            onClick={seedSampleData}
+            disabled={seeding}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white font-semibold py-2 px-4 rounded transition-colors"
+          >
+            {seeding ? 'Seeding…' : 'Seed sample rules & budgets'}
+          </button>
+          {seedMsg && <p className="text-sm mt-2">{seedMsg}</p>}
 
           <a
             href="/"

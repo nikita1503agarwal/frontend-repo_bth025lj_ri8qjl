@@ -1,6 +1,5 @@
 import { useState } from 'react'
-
-const API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+import { API_URL } from '../lib/api'
 
 export default function TransactionForm({ onCreated }) {
   const [form, setForm] = useState({
